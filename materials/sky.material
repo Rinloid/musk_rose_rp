@@ -1,0 +1,6 @@
+{
+  "cubemap": {
+    "vertexShader": "shaders/skycube.vsh",
+    "fragmentShader": "shaders/skycube.fsh"
+  }
+}

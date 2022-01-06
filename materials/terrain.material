@@ -1,0 +1,9 @@
+{
+  "materials": {
+    "version": "1.0.0",
+    "terrain_base": {
+      "vertexShader": "shaders/terrain_base.vsh",
+      "fragmentShader": "shaders/terrain_base.fsh"
+    }
+  }
+}
