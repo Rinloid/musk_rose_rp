@@ -1,0 +1,16 @@
+{
+  "biomes": {
+    "default": {
+      "water_surface_transparency": 0.75
+    },
+    "swampland": {
+      "water_surface_transparency": 0.75
+    },
+    "swampland_mutated": {
+      "water_surface_transparency": 0.75
+    },
+    "warm_ocean": {
+      "water_surface_transparency": 0.75
+    }
+  }
+}
