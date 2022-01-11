@@ -12,20 +12,29 @@
 // 2: high steps, slow
 #define CLOUD_QUALITY 2
 
-// 0: off, fastest
-// 1: low steps, fast
-// 2: high steps, slow
-#define CLOUD_SHADE_QUALITY 2
-
 #define CLOUD_RENDER_DISTAMCE 32
+
+#define SKYLIGHT_INTENSITY 2.2
+#define SUNLIGHT_INTENSITY 2.0
+#define SUNSETLIGHT_INTENSITY 18.0
+#define MOONLIGHT_INTENSITY 2.0
+#define TORCHLIGHT_INTENSITY 12.2
+
+#define WATER_REFLECTANCE 0.9
+#define ALPHA_BLENDED_BLOCK_REFLECTANCE 0.5
+#define METALLIC_BLOCK_REFLECTANCE 0.4
+
+#define AMBIENT_OCCLUSION_INTENSITY 0.62
 
 // Delete or comment out to disable.
 #define ENABLE_WATER_WAVES
 #define ENABLE_WATER_CAUSTICS
 #define ENABLE_BLOCK_NORMAL_MAPS
 #define ENABLE_REFLECTIONS
+#define ENABLE_RAINY_WET_EFFECTS
 #define ENABLE_FOG
 #define ENABLE_STARS
+#define ENABLE_CLOUD_SHADE
 
 
 
@@ -47,7 +56,7 @@ const vec3 sunLitCol = vec3(1.0, 0.92, 0.83);
 const vec3 sunSetLitCol = vec3(1.0, 0.85, 0.3);
 const vec3 torchLitCol = vec3(1.0, 0.65, 0.3);
 const vec3 moonLitCol = vec3(0.56, 0.60, 0.98);
-const vec3 shadowCol = vec3(1.05, 1.08, 1.18);
+const vec3 shadowCol = vec3(1.05, 1.08, 1.2);
 const vec3 waterCol = vec3(0.0, 0.15, 0.3);
 
 

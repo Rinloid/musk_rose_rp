@@ -23,11 +23,11 @@ float reflectAlpha = 0.0;
 
         vec3 shadedCloudCol = cloudCol;
 
-        #if CLOUD_SHADE_QUALITY != 0
+        #ifdef ENABLE_CLOUD_SHADE
             float cloudBrightness = mix(nightCloudBrightness, dayCloudBrightness, smoothstep(0.0, 0.2, daylight));
             
             if (clouds.x > 0.0) {
-                shadedCloudCol *= mix(vec3(1.0, 1.0, 1.0), cloudBrightness + reflectedView * 0.5, cloudRayMarching(skyPos, sunMoonPos, clouds.y));
+                shadedCloudCol *= mix(vec3(1.0, 1.0, 1.0), cloudBrightness + reflectedView * 0.5, 1.0 - clouds.y * 0.7);
             }
         #else
             float cloudBrightness = mix(nightCloudBrightness, dayCloudBrightness, smoothstep(0.0, 0.2, daylight));

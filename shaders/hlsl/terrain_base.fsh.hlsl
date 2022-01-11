@@ -124,21 +124,24 @@ bool isMetallic = false;
 #endif
 
 float wet = 0.0;
-if (rain > 0.0) {
-	float cosT = abs(dot(float3(0.0, 1.0, 0.0), normalize(In.camPos)));
-	wet = 0.5;
-	wet = min(1.0, wet + step(0.7, snoise(In.worldPos.xz * 0.3)) * 0.5);
-	wet = lerp(wet * max(0.0, worldNormal.y) * rain, 0.0, cosT);
-}
+
+#ifdef ENABLE_RAINY_WET_EFFECTS
+	if (rain > 0.0) {
+		float cosT = abs(dot(float3(0.0, 1.0, 0.0), normalize(In.camPos)));
+		wet = 0.5;
+		wet = min(1.0, wet + step(0.7, snoise(In.worldPos.xz * 0.3)) * 0.5);
+		wet = lerp(wet * max(0.0, worldNormal.y) * rain, 0.0, cosT);
+	}
+#endif
 
 float reflectance = 0.0;
 if (In.isWater) {
 	albedo.rgb = waterCol;
-	reflectance = 0.9;
+	reflectance = WATER_REFLECTANCE;
 } else if (isBlend) {
-	reflectance = 0.5;
+	reflectance = ALPHA_BLENDED_BLOCK_REFLECTANCE;
 } else if (isMetallic) {
-	reflectance = 0.4;
+	reflectance = METALLIC_BLOCK_REFLECTANCE;
 } else if (wet > 0.0) {
 	reflectance = wet;
 }
@@ -170,18 +173,18 @@ albedo.rgb *= shadowCol;
 
 float3 lit = float3(1.0, 1.0, 1.0);
 
-lit *= lerp(float3(1.0, 1.0, 1.0), 2.0 * skyLitCol, skyLit);
-lit *= lerp(float3(1.0, 1.0, 1.0), 1.8 * sunLitCol, sunLit);
-lit *= lerp(float3(1.0, 1.0, 1.0), 13.0 * sunSetLitCol, sunSetLit);
-lit *= lerp(float3(1.0, 1.0, 1.0), 2.0 * moonLitCol, moonLit);
-lit *= lerp(float3(1.0, 1.0, 1.0), 12.2 * torchLitCol, torchLit);
+lit *= lerp(float3(1.0, 1.0, 1.0), SKYLIGHT_INTENSITY * skyLitCol, skyLit);
+lit *= lerp(float3(1.0, 1.0, 1.0), SUNLIGHT_INTENSITY * sunLitCol, sunLit);
+lit *= lerp(float3(1.0, 1.0, 1.0), SUNSETLIGHT_INTENSITY * sunSetLitCol, sunSetLit);
+lit *= lerp(float3(1.0, 1.0, 1.0), MOONLIGHT_INTENSITY * moonLitCol, moonLit);
+lit *= lerp(float3(1.0, 1.0, 1.0), TORCHLIGHT_INTENSITY * torchLitCol, torchLit);
 
 lit = lerp(lerp(lit, float3(1.0, 1.0, 1.0), rain * 0.65), float3(1.0, 1.0, 1.0), nether);
 
 albedo.rgb *= lit;
 
 #ifndef SEASONS
-	albedo.rgb *= getAO(In.col, max(0.0, 0.6 - min(rgb2luma(lit - 1.0), 1.0)));
+	albedo.rgb *= getAO(In.col, max(0.0, AMBIENT_OCCLUSION_INTENSITY - min(rgb2luma(lit - 1.0), 1.0)));
 #endif
 
 albedo.rgb = uncharted2ToneMap(albedo.rgb, 11.2, 2.2);
@@ -201,7 +204,7 @@ if (bool(underwater)) {
 
 		albedo.rgb = lerp(albedo.rgb, lerp(albedo.rgb, reflectedView, smoothstep(0.7, 0.875, In.uv1.y)), reflectance);
 		if (In.isWater) {
-			albedo.a = lerp(0.9, 0.05, cosTheta);
+			albedo.a = lerp(0.9, 0.2, cosTheta);
 			albedo.a = lerp(albedo.a, 1.0, lerp(0.0, reflectAlpha, smoothstep(0.7, 0.875, In.uv1.y)));
 		}
 	} 

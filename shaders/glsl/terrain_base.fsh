@@ -147,22 +147,24 @@ bool isMetallic = false;
 	}
 #endif
 
-float wet = 0.0;
-if (rain > 0.0) {
-	float cosT = abs(dot(vec3(0.0, 1.0, 0.0), normalize(camPos)));
-	wet = 0.5;
-	wet = min(1.0, wet + step(0.7, snoise(worldPos.xz * 0.3)) * 0.5);
-	wet = mix(wet * max(0.0, worldNormal.y) * rain, 0.0, cosT);
-}
+#ifdef ENABLE_RAINY_WET_EFFECTS
+	float wet = 0.0;
+	if (rain > 0.0) {
+		float cosT = abs(dot(vec3(0.0, 1.0, 0.0), normalize(camPos)));
+		wet = 0.5;
+		wet = min(1.0, wet + step(0.7, snoise(worldPos.xz * 0.3)) * 0.5);
+		wet = mix(wet * max(0.0, worldNormal.y) * rain, 0.0, cosT);
+	}
+#endif
 
 float reflectance = 0.0;
 if (waterFlag > 0.5) {
 	albedo.rgb = waterCol;
-	reflectance = 0.9;
+	reflectance = WATER_REFLECTANCE;
 } else if (isBlend) {
-	reflectance = 0.5;
+	reflectance = ALPHA_BLENDED_BLOCK_REFLECTANCE;
 } else if (isMetallic) {
-	reflectance = 0.4;
+	reflectance = METALLIC_BLOCK_REFLECTANCE;
 } else if (wet > 0.0) {
 	reflectance = wet;
 }
@@ -194,18 +196,18 @@ albedo.rgb *= shadowCol;
 
 vec3 lit = vec3(1.0, 1.0, 1.0);
 
-lit *= mix(vec3(1.0, 1.0, 1.0), 2.0 * skyLitCol, skyLit);
-lit *= mix(vec3(1.0, 1.0, 1.0), 1.8 * sunLitCol, sunLit);
-lit *= mix(vec3(1.0, 1.0, 1.0), 13.0 * sunSetLitCol, sunSetLit);
-lit *= mix(vec3(1.0, 1.0, 1.0), 2.0 * moonLitCol, moonLit);
-lit *= mix(vec3(1.0, 1.0, 1.0), 12.2 * torchLitCol, torchLit);
+lit *= mix(vec3(1.0, 1.0, 1.0), SKYLIGHT_INTENSITY * skyLitCol, skyLit);
+lit *= mix(vec3(1.0, 1.0, 1.0), SUNLIGHT_INTENSITY * sunLitCol, sunLit);
+lit *= mix(vec3(1.0, 1.0, 1.0), SUNSETLIGHT_INTENSITY * sunSetLitCol, sunSetLit);
+lit *= mix(vec3(1.0, 1.0, 1.0), MOONLIGHT_INTENSITY * moonLitCol, moonLit);
+lit *= mix(vec3(1.0, 1.0, 1.0), TORCHLIGHT_INTENSITY * torchLitCol, torchLit);
 
 lit = mix(mix(lit, vec3(1.0, 1.0, 1.0), rain * 0.65), vec3(1.0, 1.0, 1.0), nether);
 
 albedo.rgb *= lit;
 
 #ifndef SEASONS
-	albedo.rgb *= getAO(inCol, max(0.0, 0.6 - min(rgb2luma(lit - 1.0), 1.0)));
+	albedo.rgb *= getAO(inCol, max(0.0, AMBIENT_OCCLUSION_INTENSITY - min(rgb2luma(lit - 1.0), 1.0)));
 #endif
 
 albedo.rgb = uncharted2ToneMap(albedo.rgb, 11.2, 2.2);

@@ -38,7 +38,7 @@ void main() {
 	inCol = COLOR;
 #endif
 worldPos = POSITION.xyz;
-#ifndef SEASONS
+#if !defined(SEASONS) && defined(BLEND)
 	if (0.05 < COLOR.a && COLOR.a < 0.95) {
 		waterFlag = 1.0; 
 	} else {

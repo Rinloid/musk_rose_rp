@@ -36,7 +36,7 @@ void main(in Input In, out Output Out) {
 	Out.col = In.col;
 #endif
 Out.worldPos = In.pos.xyz;
-#ifndef SEASONS
+#if !defined(SEASONS) && defined(BLEND)
 	if (0.05 < In.col.a && In.col.a < 0.95) {
 		Out.isWater = true; 
 	} else {

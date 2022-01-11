@@ -1,6 +1,7 @@
 #ifndef FUNCTIONS_INCLUDED
 #define FUNCTIONS_INCLUDED
 
+// https://www.shadertoy.com/view/4djSRW
 hmp float hash12(hmp vec2 p) {
 	hmp vec3 p3  = fract(vec3(p.xyx) * .1031);
     p3 += dot(p3, p3.yzx + 33.33);
@@ -135,63 +136,39 @@ vec3 atmo(const hmp vec3 pos, const vec3 sunMoonPos, const vec3 skyCol, const fl
 	return result;
 }
 
-#if CLOUD_QUALITY != 0
-    float render2DClouds(const hmp vec2 pos, const float rain, const hmp float time) {
-        hmp vec2 p = pos;
-        p += time * 0.15;
-        float body = hash12(floor(p));
-        body = (body > mix(0.92, 0.0, rain)) ? 1.0 : 0.0;
+float render2DClouds(const hmp vec2 pos, const float rain, const hmp float time) {
+    hmp vec2 p = pos;
+    p += time * 0.15;
+    float body = hash12(floor(p));
+    body = (body > mix(0.92, 0.0, rain)) ? 1.0 : 0.0;
 
-        return body;
-    }
+    return body;
+}
 
-    vec2 renderThickClouds(const hmp vec3 pos, const float rain, const hmp float time) {
-        #if CLOUD_QUALITY == 2
-            const int steps = 48;
-            const float stepSize = 0.008;
-        #elif CLOUD_QUALITY == 1
-            const int steps = 24;
-            const float stepSize = 0.016;
-        #endif
-
-        float clouds = 0.0;
-        float cHeight = 0.0;
-            for (int i = 0; i < steps; i++) {
-                float height = 1.0 + float(i) * stepSize;
-                hmp vec2 cloudPos = pos.xz / pos.y * height;
-                cloudPos *= 1.5;
-                clouds += render2DClouds(cloudPos, rain, time);
-                cHeight = mix(cHeight, 1.0, clouds / float(steps) * float(steps) * stepSize);
-            }
-        clouds /= float(steps);
-        clouds = clamp(clouds * 10.0, 0.0, 1.0);
-        // clouds > 0.0 ? 1.0 : 0.0;
-
-        return vec2(clouds, cHeight);
-    }
-
-    #if CLOUD_SHADE_QUALITY != 0
-        float cloudRayMarching(const hmp vec3 pos, const vec3 sunMoonPos, const float height) {
-            #if CLOUD_SHADE_QUALITY == 2
-                const int raySteps = 5;
-                const float stepSize = 0.02;
-            #elif CLOUD_SHADE_QUALITY == 1
-                const int raySteps = 2;
-                const float stepSize = 0.02;
-            #endif
-            
-            hmp vec3 rayStep = normalize(sunMoonPos - pos) * stepSize;
-            hmp vec3 rayPos  = pos * 0.08;
-            float  inside  = 0.0;
-                for (int i = 0; i < raySteps; i++) {
-                    rayPos += rayStep;
-                    inside += max(0.0, (1.0 - height) - (rayPos.y - pos.y));
-                } inside /= float(raySteps);
-            
-            return inside;
-        }
+vec2 renderThickClouds(const hmp vec3 pos, const float rain, const hmp float time) {
+    #if CLOUD_QUALITY == 2
+        const int steps = 48;
+        const float stepSize = 0.008;
+    #elif CLOUD_QUALITY == 1
+        const int steps = 24;
+        const float stepSize = 0.016;
     #endif
-#endif
+
+    float clouds = 0.0;
+    float cHeight = 0.0;
+        for (int i = 0; i < steps; i++) {
+            float height = 1.0 + float(i) * stepSize;
+            hmp vec2 cloudPos = pos.xz / pos.y * height;
+            cloudPos *= 1.5;
+            clouds += render2DClouds(cloudPos, rain, time);
+            cHeight = mix(cHeight, 1.0, clouds / float(steps) * float(steps) * stepSize);
+        }
+    clouds /= float(steps);
+    clouds = clamp(clouds * 10.0, 0.0, 1.0);
+    // clouds > 0.0 ? 1.0 : 0.0;
+
+    return vec2(clouds, cHeight);
+}
 
 float getStars(const hmp vec3 pos) {
     hmp vec3 p = floor((abs(normalize(pos)) + 16.0) * 265.0);
@@ -312,19 +289,13 @@ float waterWaves(hmp vec2 p, const hmp float time) {
 	return r * 0.005;
 }
 
-vec3 waterWaves2Normal(const hmp vec2 pos, const hmp float time) {
-    const float texStep = 0.05;
-
-	float h0 = waterWaves(pos, time);
-	float h1 = waterWaves(pos + vec2(texStep, 0.0), time);
-	float h2 = waterWaves(pos + vec2(-texStep, 0.0), time);
-	float h3 = waterWaves(pos + vec2(0.0, texStep), time);
-	float h4 = waterWaves(pos + vec2(0.0, -texStep), time);
-
-	float deltaX = ((h1 - h0) + (h0 - h2)) / texStep;
-	float deltaY = ((h3 - h0) + (h0 - h4)) / texStep;
-
-	return normalize(vec3(deltaX, deltaY, 1.0 - deltaX * deltaX - deltaY * deltaY));
+vec3 waterWaves2Normal(const vec2 pos, const float time) {
+	const float texStep = 0.04;
+	float height = waterWaves(pos, time);
+	vec2 dxy = height - vec2(waterWaves(pos + vec2(texStep, 0.0), time),
+		waterWaves(pos + vec2(0.0, texStep), time));
+    
+	return normalize(vec3(dxy / texStep, 1.0));
 }
 
 // All codes below is from Origin Shader by linlin.

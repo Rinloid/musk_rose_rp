@@ -1,6 +1,7 @@
 #ifndef FUNCTIONS_INCLUDED
 #define FUNCTIONS_INCLUDED
 
+// https://www.shadertoy.com/view/4djSRW
 float hash12(float2 p) {
 	float3 p3  = frac(float3(p.xyx) * .1031);
     p3 += dot(p3, p3.yzx + 33.33);
@@ -14,65 +15,81 @@ float hash13(float3 p3) {
 }
 
 // https://github.com/stegu/webgl-noise/blob/master/src/noise2D.glsl
-float3 mod289(float3 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
+#define NOISE_SIMPLEX_1_DIV_289 0.00346020761245674740484429065744
+
+float mod289(float x) {
+    return x - floor(x * NOISE_SIMPLEX_1_DIV_289) * 289.0;
 }
 
 float2 mod289(float2 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
+    return x - floor(x * NOISE_SIMPLEX_1_DIV_289) * 289.0;
 }
 
-float3 permute(float3 x) {
-  return mod289(((x*34.0)+10.0)*x);
+float3 mod289(float3 x) {
+    return x - floor(x * NOISE_SIMPLEX_1_DIV_289) * 289.0;
 }
 
-float snoise(float2 v)
-  {
-  const float4 C = float4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
-                          0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
-                         -0.577350269189626,  // -1.0 + 2.0 * C.x
-                          0.024390243902439); // 1.0 / 41.0
-// First corner
-  float2 i  = floor(v + dot(v, C.yy) );
-  float2 x0 = v -   i + dot(i, C.xx);
+float4 mod289(float4 x) {
+    return x - floor(x * NOISE_SIMPLEX_1_DIV_289) * 289.0;
+}
 
-// Other corners
-  float2 i1;
-  //i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0
-  //i1.y = 1.0 - i1.x;
-  i1 = (x0.x > x0.y) ? float2(1.0, 0.0) : float2(0.0, 1.0);
-  // x0 = x0 - 0.0 + 0.0 * C.xx ;
-  // x1 = x0 - i1 + 1.0 * C.xx ;
-  // x2 = x0 - 1.0 + 2.0 * C.xx ;
-  float4 x12 = x0.xyxy + C.xxzz;
-  x12.xy -= i1;
+float permute289(float x) {
+    return mod289((x * 34.0 + 1.0) * x);
+}
 
-// Permutations
-  i = mod289(i); // Avoid truncation effects in permutation
-  float3 p = permute( permute( i.y + float3(0.0, i1.y, 1.0 ))
-		+ i.x + float3(0.0, i1.x, 1.0 ));
+float3 permute289(float3 x) {
+    return mod289((x * 34.0 + 1.0) * x);
+}
 
-  float3 m = max(0.5 - float3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-  m = m*m ;
-  m = m*m ;
+float4 permute289(float4 x) {
+    return mod289((x * 34.0 + 1.0) * x);
+}
 
-// Gradients: 41 points uniformly over a line, mapped onto a diamond.
-// The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
+float snoise(float2 v) {
+    const float4 C = float4(
+        0.211324865405187,   // (3.0-sqrt(3.0))/6.0
+        0.366025403784439,   // 0.5*(sqrt(3.0)-1.0)
+        -0.577350269189626,  // -1.0 + 2.0 * C.x
+        0.024390243902439);  // 1.0 / 41.0
 
-  float3 x = 2.0 * frac(p * C.www) - 1.0;
-  float3 h = abs(x) - 0.5;
-  float3 ox = floor(x + 0.5);
-  float3 a0 = x - ox;
+    // First corner
+    float2 i  = floor(v + dot(v, C.yy));
+    float2 x0 = v -   i + dot(i, C.xx);
 
-// Normalise gradients implicitly by scaling m
-// Approximation of: m *= inversesqrt( a0*a0 + h*h );
-  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+    // Other corners
+    float2 i1  = x0.x > x0.y ? float2(1.0, 0.0) : float2(0.0, 1.0);
+    float4 x12 = x0.xyxy + C.xxzz;
+    x12.xy -= i1;
 
-// Compute final noise value at P
-  float3 g;
-  g.x  = a0.x  * x0.x  + h.x  * x0.y;
-  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-  return 130.0 * dot(m, g);
+    // Permutations
+    i = mod289(i); // Avoid truncation effects in permutation
+    float3 p =
+        permute289(
+            permute289(
+                i.y + float3(0.0, i1.y, 1.0)
+                ) + i.x + float3(0.0, i1.x, 1.0)
+            );
+
+    float3 m = max(0.5 - float3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+    m = m*m;
+    m = m*m;
+
+    // Gradients: 41 points uniformly over a line, mapped onto a
+    // diamond.  The ring size 17*17 = 289 is close to a multiple of
+    // 41 (41*7 = 287)
+    float3 x  = 2.0 * frac(p * C.www) - 1.0;
+    float3 h  = abs(x) - 0.5;
+    float3 ox = round(x);
+    float3 a0 = x - ox;
+
+    // Normalise gradients implicitly by scaling m
+    m *= rsqrt(a0 * a0 + h * h);
+
+    // Compute final noise value at P
+    float3 g;
+    g.x  = a0.x  * x0.x   + h.x  * x0.y;
+    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+    return 130.0 * dot(m, g);
 }
 
 #define PI 3.1415
@@ -119,63 +136,39 @@ float3 atmo(const float3 pos, const float3 sunMoonPos, const float3 skyCol, cons
 	return result;
 }
 
-#if CLOUD_QUALITY != 0
-    float render2DClouds(const float2 pos, const float rain, const float time) {
-        float2 p = pos;
-        p += time * 0.15;
-        float body = hash12(floor(p));
-        body = (body > lerp(0.92, 0.0, rain)) ? 1.0 : 0.0;
+float render2DClouds(const float2 pos, const float rain, const float time) {
+    float2 p = pos;
+    p += time * 0.1;
+    float body = hash12(floor(p));
+    body = (body > lerp(0.92, 0.0, rain)) ? 1.0 : 0.0;
 
-        return body;
-    }
+    return body;
+}
 
-    float2 renderThickClouds(const float3 pos, const float rain, const float time) {
-        #if CLOUD_QUALITY == 2
-            static const int steps = 48;
-            static const float stepSize = 0.008;
-        #elif CLOUD_QUALITY == 1
-            static const int steps = 24;
-            static const float stepSize = 0.016;
-        #endif
-
-        float clouds = 0.0;
-        float cHeight = 0.0;
-            for (int i = 0; i < steps; i++) {
-                float height = 1.0 + float(i) * stepSize;
-                float2 cloudPos = pos.xz / pos.y * height;
-                cloudPos *= 1.5;
-                clouds += render2DClouds(cloudPos, rain, time);
-                cHeight = lerp(cHeight, 1.0, clouds / float(steps) * float(steps) * stepSize);
-            }
-        clouds /= float(steps);
-        clouds = clamp(clouds * 10.0, 0.0, 1.0);
-        // clouds > 0.0 ? 1.0 : 0.0;
-
-        return float2(clouds, cHeight);
-    }
-
-    #if CLOUD_SHADE_QUALITY != 0
-        float cloudRayMarching(const float3 pos, const float3 sunMoonPos, const float height) {
-            #if CLOUD_SHADE_QUALITY == 2
-                static const int raySteps = 5;
-                static const float stepSize = 0.02;
-            #elif CLOUD_SHADE_QUALITY == 1
-                static const int raySteps = 2;
-                static const float stepSize = 0.02;
-            #endif
-            
-            float3 rayStep = normalize(sunMoonPos - pos) * stepSize;
-            float3 rayPos  = pos * 0.08;
-            float  inside  = 0.0;
-                for (int i = 0; i < raySteps; i++) {
-                    rayPos += rayStep;
-                    inside += max(0.0, (1.0 - height) - (rayPos.y - pos.y));
-                } inside /= raySteps;
-            
-            return inside;
-        }
+float2 renderThickClouds(const float3 pos, const float rain, const float time) {
+    #if CLOUD_QUALITY == 2
+        static const int steps = 48;
+        static const float stepSize = 0.008;
+    #elif CLOUD_QUALITY == 1
+        static const int steps = 24;
+        static const float stepSize = 0.016;
     #endif
-#endif
+
+    float clouds = 0.0;
+    float cHeight = 0.0;
+        for (int i = 0; i < steps; i++) {
+            float height = 1.0 + float(i) * stepSize;
+            float2 cloudPos = pos.xz / pos.y * height;
+            cloudPos *= 1.5;
+            clouds += render2DClouds(cloudPos, rain, time);
+            cHeight = lerp(cHeight, 1.0, clouds / float(steps) * float(steps) * stepSize);
+        }
+    clouds /= float(steps);
+    clouds = clamp(clouds * 10.0, 0.0, 1.0);
+    // clouds > 0.0 ? 1.0 : 0.0;
+
+    return float2(clouds, cHeight);
+}
 
 float getStars(const float3 pos) {
     float3 p = floor((abs(normalize(pos)) + 16.0) * 265.0);
@@ -297,18 +290,12 @@ float waterWaves(float2 p, const float time) {
 }
 
 float3 waterWaves2Normal(const float2 pos, const float time) {
-    static const float texStep = 0.05;
-
-	float h0 = waterWaves(pos, time);
-	float h1 = waterWaves(pos + float2(texStep, 0.0), time);
-	float h2 = waterWaves(pos + float2(-texStep, 0.0), time);
-	float h3 = waterWaves(pos + float2(0.0, texStep), time);
-	float h4 = waterWaves(pos + float2(0.0, -texStep), time);
-
-	float deltaX = ((h1 - h0) + (h0 - h2)) / texStep;
-	float deltaY = ((h3 - h0) + (h0 - h4)) / texStep;
-
-	return normalize(float3(deltaX, deltaY, 1.0 - deltaX * deltaX - deltaY * deltaY));
+	static const float texStep = 0.04;
+	float height = waterWaves(pos, time);
+	float2 dxy = height - float2(waterWaves(pos + float2(texStep, 0.0), time),
+		waterWaves(pos + float2(0.0, texStep), time));
+    
+	return normalize(float3(dxy / texStep, 1.0));
 }
 
 // All codes below is from Origin Shader by linlin.
