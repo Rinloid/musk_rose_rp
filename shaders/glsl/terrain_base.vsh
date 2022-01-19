@@ -31,6 +31,17 @@ attribute vec4 COLOR;
 attribute vec2 TEXCOORD_0;
 attribute vec2 TEXCOORD_1;
 
+uniform highp float TOTAL_REAL_WORLD_TIME;
+
+bool isPlant(vec4 vertexCol, highp vec4 pos) {
+    vec3 fractPos = fract(pos.xyz);
+    #if defined(ALPHA_TEST)
+        return (vertexCol.g != vertexCol.b && vertexCol.r < vertexCol.g + vertexCol.b) || (fractPos.y == 0.9375 && (fractPos.z == 0.0 || fractPos.x == 0.0));
+    #else
+        return false;
+    #endif
+}
+
 void main() {
 #ifndef BYPASS_PIXEL_SHADER
     uv0 = TEXCOORD_0;
@@ -52,6 +63,14 @@ worldPos = POSITION.xyz;
 	camPos = pos.xyz;
 #else
     camPos = (POSITION.xyz * CHUNK_ORIGIN_AND_SCALE.w) + CHUNK_ORIGIN_AND_SCALE.xyz;
+
+	if (isPlant(COLOR, POSITION)) {
+		highp vec3 wavPos = abs(POSITION.xyz - 8.0);
+		highp float wave = sin(TOTAL_REAL_WORLD_TIME * 3.5 + 2.0 * wavPos.x + 2.0 * wavPos.z + wavPos.y);
+
+		camPos.x += wave * 0.03 * smoothstep(0.7, 1.0, uv1.y);
+	}
+
     POS4 pos = WORLDVIEW * vec4(camPos, 1.0);
     pos = PROJ * pos;
 #endif

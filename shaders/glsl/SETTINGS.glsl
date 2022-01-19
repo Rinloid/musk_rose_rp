@@ -12,6 +12,10 @@
 // 2: high steps, slow
 #define CLOUD_QUALITY 2
 
+// 0: Blocky cloud
+// 1: Fluffy cloud (lagggs!)
+#define CLOUD_TYPE 1
+
 #define CLOUD_RENDER_DISTAMCE 32
 
 #define SKYLIGHT_INTENSITY 2.2

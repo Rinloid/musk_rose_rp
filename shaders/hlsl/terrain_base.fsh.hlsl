@@ -118,8 +118,9 @@ bool isBlend = false;
 
 bool isMetallic = false;
 #if !defined(ALPHA_TEST) || !defined(BLEND)
-	if ((0.95 < texCol.a && texCol.a < 1.0) && In.col.b == In.col.g && In.col.r == In.col.g) {
+	if (alpha2BlockID(texCol) < 4 && In.col.b == In.col.g && In.col.r == In.col.g) {
 		isMetallic = true;
+		albedo.rgb = lerp(albedo.rgb, getF0(texCol, albedo).rgb, 1.0);
 	}
 #endif
 
@@ -142,6 +143,9 @@ if (In.isWater) {
 	reflectance = ALPHA_BLENDED_BLOCK_REFLECTANCE;
 } else if (isMetallic) {
 	reflectance = METALLIC_BLOCK_REFLECTANCE;
+	if (alpha2BlockID(texCol) == 3) {
+		reflectance = REFLECTIVE_BLOCK_REFLECTANCE;
+	}
 } else if (wet > 0.0) {
 	reflectance = wet;
 }
@@ -159,7 +163,7 @@ if (In.isWater && bool(step(0.7, In.uv1.y))) {
 	#endif
 } else if (isReflective && bool(step(0.7, In.uv1.y))) {
 	#ifdef ENABLE_BLOCK_NORMAL_MAPS
-		worldNormal = normalize(mul(tBN, texture2Normal(In.uv0, 2048.0, 0.0008)));
+		worldNormal = normalize(mul(tBN, texture2Normal(In.uv0, 3072.0, 0.0008)));
 	#endif
 }
 
@@ -199,7 +203,7 @@ if (bool(underwater)) {
 	if (isReflective && !bool(underwater)) {
 		float cosTheta = abs(dot(normalize(In.camPos), worldNormal));
 		float3 skyPos = reflectPos;
-		
+
 		#include "reflectedview.hlsl"
 
 		albedo.rgb = lerp(albedo.rgb, lerp(albedo.rgb, reflectedView, smoothstep(0.7, 0.875, In.uv1.y)), reflectance);
@@ -212,7 +216,7 @@ if (bool(underwater)) {
 		else if (isRealUnderwater) {
 			float caustic = waterWaves(In.worldPos.xz, TOTAL_REAL_WORLD_TIME) / 0.005;
 
-			albedo.rgb *= lerp(1.0, 1.2, 1.0 - caustic);
+			albedo.rgb *= lerp(1.1, 1.2, 1.0 - caustic);
 		}
 	#endif
 #endif

@@ -144,6 +144,7 @@ bool isMetallic = false;
 #if !defined(ALPHA_TEST) || !defined(BLEND)
 	if ((0.95 < texCol.a && texCol.a < 1.0) && inCol.b == inCol.g && inCol.r == inCol.g) {
 		isMetallic = true;
+		albedo.rgb = mix(albedo.rgb, getF0(texCol, albedo).rgb, 1.0);
 	}
 #endif
 
@@ -235,7 +236,7 @@ if (bool(underwater)) {
 		else if (isRealUnderwater) {
 			float caustic = waterWaves(worldPos.xz, TOTAL_REAL_WORLD_TIME) / 0.005;
 
-			albedo.rgb *= mix(1.0, 1.2, 1.0 - caustic);
+			albedo.rgb *= mix(1.1, 1.2, 1.0 - caustic);
 		}
 	#endif
 #endif

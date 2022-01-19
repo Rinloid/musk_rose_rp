@@ -92,6 +92,26 @@ hmp float snoise(hmp vec2 v) {
     return 130.0 * dot(m, g);
 }
 
+float fBM(hmp vec2 x, const float amp, const float lower, const float upper, const float time, const int octaves) {
+	x -= time * 0.01;
+	hmp float v = 0.0;
+	hmp float a = amp;
+	hmp vec2 shift = vec2(100.0, 100.0);
+    hmp mat2 rot = mat2(cos(0.5), sin(0.5), -sin(0.5), cos(0.50));
+	for (int i = 0; i < octaves; ++i) {
+		v += a * snoise(x);
+		x = rot * x * 2.0 + shift;
+        if (v >= upper) {
+            break;
+        } else if (v + a <= lower) {
+            break;
+        }
+		a *= 0.5;
+		x.y -= float(i + 1) * time * 0.02;
+	}
+	return smoothstep(lower, upper, v);
+}
+
 #define PI 3.1415
 
 vec3 absorb(const vec3 x, const float y, const float brightness) {
@@ -136,6 +156,21 @@ vec3 atmo(const hmp vec3 pos, const vec3 sunMoonPos, const vec3 skyCol, const fl
 	return result;
 }
 
+float cloudRayMarching(const hmp vec3 pos, const vec3 litPos, const float height) {
+	const int steps = 1;
+    const float stepSize = 0.6;
+
+    hmp vec3 rayPos = pos;
+    hmp vec3 rayStep = normalize(litPos - pos) * stepSize;
+    float shade = 0.0;
+    for (int i = 0; i < steps; i++) {
+            rayPos += rayStep;
+            shade += max(0.0, height - (rayPos.y - pos.y));
+        } shade /= float(steps);
+    
+    return shade;
+}
+
 float render2DClouds(const hmp vec2 pos, const float rain, const hmp float time) {
     hmp vec2 p = pos;
     p += time * 0.15;
@@ -145,7 +180,7 @@ float render2DClouds(const hmp vec2 pos, const float rain, const hmp float time)
     return body;
 }
 
-vec2 renderThickClouds(const hmp vec3 pos, const float rain, const hmp float time) {
+vec2 renderThickClouds(const hmp vec3 pos, const vec3 sunMoonPos, const float rain, const hmp float time) {
     #if CLOUD_QUALITY == 2
         const int steps = 48;
         const float stepSize = 0.008;
@@ -161,13 +196,45 @@ vec2 renderThickClouds(const hmp vec3 pos, const float rain, const hmp float tim
             hmp vec2 cloudPos = pos.xz / pos.y * height;
             cloudPos *= 1.5;
             clouds += render2DClouds(cloudPos, rain, time);
-            cHeight = mix(cHeight, 1.0, clouds / float(steps) * float(steps) * stepSize);
+            #ifdef ENABLE_CLOUD_SHADE
+                cHeight = mix(cHeight, 1.0, clouds / float(steps) * float(steps) * stepSize);
+            #endif
         }
     clouds /= float(steps);
     clouds = clamp(clouds * 10.0, 0.0, 1.0);
     // clouds > 0.0 ? 1.0 : 0.0;
 
     return vec2(clouds, cHeight);
+}
+
+vec2 renderFluffyClouds(const hmp vec3 pos, const vec3 sunMoonPos, const float rain, const hmp float time) {
+    #if CLOUD_QUALITY == 2
+        const int steps = 48;
+        const float stepSize = 0.008;
+    #elif CLOUD_QUALITY == 1
+        const int steps = 24;
+        const float stepSize = 0.016;
+    #endif
+
+	vec2 clouds = vec2(0.0, 0.0);
+	float amp = mix(0.28, 1.0, rain);
+
+	for (int i = 0; i < steps; i++) {
+		float height = 1.0 + float(i) * stepSize;
+		hmp vec2 cloudPos = pos.xz / pos.y * height;
+		cloudPos *= 0.3;
+		clouds.x += fBM(cloudPos, amp, mix(0.4, 0.0, rain), mix(0.85, 1.0, rain), time, 7);
+        #ifdef ENABLE_CLOUD_SHADE
+            if (clouds.x > 0.0) {
+                clouds.y += cloudRayMarching(pos, sunMoonPos, fBM(cloudPos * 0.875, amp, mix(0.35, 0.0, rain), 1.0, time, 4));
+            }
+        #endif
+		amp *= 1.07;
+	} clouds /= float(steps);
+
+	clouds = smoothstep(0.0, mix(0.65, 1.0, rain), clouds);
+
+	return clouds;
 }
 
 float getStars(const hmp vec3 pos) {
@@ -263,6 +330,26 @@ float getAO(vec4 vertexCol, const float shrinkLevel) {
     float lum = vertexCol.g * 2.0 - (vertexCol.r < vertexCol.b ? vertexCol.r : vertexCol.b);
 
     return min(lum + (1.0 - shrinkLevel), 1.0);
+}
+
+int alpha2BlockID(const vec4 texCol) {
+    bool iron   = 0.99 <= texCol.a && texCol.a < 1.00;
+    bool gold   = 0.98 <= texCol.a && texCol.a < 0.99;
+    bool copper = 0.97 <= texCol.a && texCol.a < 0.98;
+    bool other  = 0.96 <= texCol.a && texCol.a < 0.97;
+
+    return iron ? 0 : gold ? 1 : copper ? 2 : other ? 3 : 4;
+}
+
+vec3 getF0(const vec4 texCol, const vec4 albedo) {
+    mat4 f0 =
+        mat4(vec4(0.56, 0.57, 0.58, 1.0), // Iron
+             vec4(1.00, 0.71, 0.29, 1.0), // Gold
+             vec4(0.95, 0.64, 0.54, 1.0), // Copper
+               albedo                       // Other
+            );
+
+    return f0[min(alpha2BlockID(texCol), 3)].rgb * rgb2luma(texCol.rgb);
 }
 
 vec3 texture2Normal(vec2 uv, float resolution, float scale) {

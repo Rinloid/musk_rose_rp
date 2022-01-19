@@ -12,6 +12,10 @@
 // 2: high steps, slow
 #define CLOUD_QUALITY 2
 
+// 0: Blocky cloud
+// 1: Fluffy cloud (lagggs!)
+#define CLOUD_TYPE 1
+
 #define CLOUD_RENDER_DISTAMCE 32
 
 #define SKYLIGHT_INTENSITY 2.2
@@ -22,7 +26,8 @@
 
 #define WATER_REFLECTANCE 0.9
 #define ALPHA_BLENDED_BLOCK_REFLECTANCE 0.5
-#define METALLIC_BLOCK_REFLECTANCE 0.4
+#define METALLIC_BLOCK_REFLECTANCE 0.5
+#define REFLECTIVE_BLOCK_REFLECTANCE 0.3
 
 #define AMBIENT_OCCLUSION_INTENSITY 0.62
 

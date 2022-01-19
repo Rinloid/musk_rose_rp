@@ -18,7 +18,11 @@ float reflectAlpha = 0.0;
 #if CLOUD_QUALITY != 0
     float drawSpace = max(0.0, length(skyPos.xz / (skyPos.y * float(CLOUD_RENDER_DISTAMCE))));
     if (drawSpace < 1.0 && !bool(step(skyPos.y, 0.0))) {
-        vec2 clouds = renderThickClouds(skyPos, rain, TOTAL_REAL_WORLD_TIME);
+        #if CLOUD_TYPE == 0
+            vec2 clouds = renderThickClouds(skyPos, sunMoonPos, rain, TOTAL_REAL_WORLD_TIME);
+        #elif CLOUD_TYPE == 1
+            vec2 clouds = renderFluffyClouds(skyPos, sunMoonPos, rain, TOTAL_REAL_WORLD_TIME);
+        #endif
         clouds = mix(clouds, vec2(0.0, 0.0), drawSpace);
 
         vec3 shadedCloudCol = cloudCol;

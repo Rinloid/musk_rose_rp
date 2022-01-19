@@ -92,6 +92,26 @@ float snoise(float2 v) {
     return 130.0 * dot(m, g);
 }
 
+float fBM(float2 x, const float amp, const float lower, const float upper, const float time, const int octaves) {
+	x -= time * 0.01;
+	float v = 0.0;
+	float a = amp;
+	float2 shift = float2(100.0, 100.0);
+    float2x2 rot = float2x2(cos(0.5), sin(0.5), -sin(0.5), cos(0.50));
+	for (int i = 0; i < octaves; ++i) {
+		v += a * snoise(x);
+		x = mul(rot, x) * 2.0 + shift;
+        if (v >= upper) {
+            break;
+        } else if (v + a <= lower) {
+            break;
+        }
+		a *= 0.5;
+		x.y -= float(i + 1) * time * 0.02;
+	}
+	return smoothstep(lower, upper, v);
+}
+
 #define PI 3.1415
 
 float3 absorb(const float3 x, const float y, const float brightness) {
@@ -136,6 +156,21 @@ float3 atmo(const float3 pos, const float3 sunMoonPos, const float3 skyCol, cons
 	return result;
 }
 
+float cloudRayMarching(const float3 pos, const float3 litPos, const float height) {
+	static const int steps = 1;
+    static const float stepSize = 0.6;
+
+    float3 rayPos = pos;
+    float3 rayStep = normalize(litPos - pos) * stepSize;
+    float shade = 0.0;
+    for (int i = 0; i < steps; i++) {
+            rayPos += rayStep;
+            shade += max(0.0, height - (rayPos.y - pos.y));
+        } shade /= float(steps);
+    
+    return shade;
+}
+
 float render2DClouds(const float2 pos, const float rain, const float time) {
     float2 p = pos;
     p += time * 0.1;
@@ -145,7 +180,7 @@ float render2DClouds(const float2 pos, const float rain, const float time) {
     return body;
 }
 
-float2 renderThickClouds(const float3 pos, const float rain, const float time) {
+float2 renderThickClouds(const float3 pos, const float3 sunMoonPos, const float rain, const float time) {
     #if CLOUD_QUALITY == 2
         static const int steps = 48;
         static const float stepSize = 0.008;
@@ -161,13 +196,45 @@ float2 renderThickClouds(const float3 pos, const float rain, const float time) {
             float2 cloudPos = pos.xz / pos.y * height;
             cloudPos *= 1.5;
             clouds += render2DClouds(cloudPos, rain, time);
-            cHeight = lerp(cHeight, 1.0, clouds / float(steps) * float(steps) * stepSize);
+            #ifdef ENABLE_CLOUD_SHADE
+                cHeight = lerp(cHeight, 1.0, clouds / float(steps) * float(steps) * stepSize);
+            #endif
         }
     clouds /= float(steps);
     clouds = clamp(clouds * 10.0, 0.0, 1.0);
     // clouds > 0.0 ? 1.0 : 0.0;
 
     return float2(clouds, cHeight);
+}
+
+float2 renderFluffyClouds(const float3 pos, const float3 sunMoonPos, const float rain, const float time) {
+    #if CLOUD_QUALITY == 2
+        static const int steps = 48;
+        static const float stepSize = 0.008;
+    #elif CLOUD_QUALITY == 1
+        static const int steps = 24;
+        static const float stepSize = 0.016;
+    #endif
+
+	float2 clouds = float2(0.0, 0.0);
+	float amp = lerp(0.28, 1.0, rain);
+
+	for (int i = 0; i < steps; i++) {
+		float height = 1.0 + float(i) * stepSize;
+		float2 cloudPos = pos.xz / pos.y * height;
+		cloudPos *= 0.3;
+		clouds.x += fBM(cloudPos, amp, lerp(0.4, 0.0, rain), lerp(0.85, 1.0, rain), time, 6);
+		#ifdef ENABLE_CLOUD_SHADE
+            if (clouds.x > 0.0) {
+                clouds.y += cloudRayMarching(pos, sunMoonPos, fBM(cloudPos * 0.875, amp, lerp(0.35, 0.0, rain), 1.0, time, 4));
+            }
+        #endif
+		amp *= 1.07;
+	} clouds /= float(steps);
+
+	clouds = smoothstep(0.0, lerp(0.65, 1.0, rain), clouds);
+
+	return clouds;
 }
 
 float getStars(const float3 pos) {
@@ -205,7 +272,7 @@ float3x3 getTBNMatrix(const float3 normal) {
     float3 B = cross(T, normal);
     float3 N = float3(-normal.x, normal.y, normal.z);
 
-    return transpose(float3x3(T, B, N));
+    return float3x3(T, B, N);
 }
 
 float rgb2luma(float3 color) {
@@ -265,6 +332,26 @@ float getAO(float4 vertexCol, const float shrinkLevel) {
     return min(lum + (1.0 - shrinkLevel), 1.0);
 }
 
+int alpha2BlockID(const float4 texCol) {
+    bool iron   = 0.99 <= texCol.a && texCol.a < 1.00;
+    bool gold   = 0.98 <= texCol.a && texCol.a < 0.99;
+    bool copper = 0.97 <= texCol.a && texCol.a < 0.98;
+    bool other  = 0.96 <= texCol.a && texCol.a < 0.97;
+
+    return iron ? 0 : gold ? 1 : copper ? 2 : other ? 3 : 4;
+}
+
+float3 getF0(const float4 texCol, const float4 albedo) {
+    float4x4 f0 =
+        float4x4(float4(0.56, 0.57, 0.58, 1.0), // Iron
+                 float4(1.00, 0.71, 0.29, 1.0), // Gold
+                 float4(0.95, 0.64, 0.54, 1.0), // Copper
+                 albedo                         // Other
+                );
+
+    return f0[min(alpha2BlockID(texCol), 3)].rgb * rgb2luma(texCol.rgb);
+}
+
 float3 texture2Normal(float2 uv, float resolution, float scale) {
 	float2 texStep = 1.0 / resolution * float2(2.0, 1.0);
 	#if !USE_TEXEL_AA
@@ -290,7 +377,7 @@ float waterWaves(float2 p, const float time) {
 }
 
 float3 waterWaves2Normal(const float2 pos, const float time) {
-	static const float texStep = 0.04;
+	static const float texStep = 0.05;
 	float height = waterWaves(pos, time);
 	float2 dxy = height - float2(waterWaves(pos + float2(texStep, 0.0), time),
 		waterWaves(pos + float2(0.0, texStep), time));

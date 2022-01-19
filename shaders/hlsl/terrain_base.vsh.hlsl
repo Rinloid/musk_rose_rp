@@ -28,6 +28,15 @@ struct Output {
 #endif
 };
 
+bool isPlant(float4 vertexCol, float4 pos) {
+    float3 fracPos = frac(pos.xyz);
+    #if defined(ALPHA_TEST)
+        return (vertexCol.g != vertexCol.b && vertexCol.r < vertexCol.g + vertexCol.b) || (fracPos.y == 0.9375 && (fracPos.z == 0.0 || fracPos.x == 0.0));
+    #else
+        return false;
+    #endif
+}
+
 ROOT_SIGNATURE
 void main(in Input In, out Output Out) {
 #ifndef BYPASS_PIXEL_SHADER
@@ -55,6 +64,14 @@ Out.worldPos = In.pos.xyz;
 	Out.camPos = Out.pos;
 #else
 	Out.camPos = (In.pos.xyz * CHUNK_ORIGIN_AND_SCALE.w) + CHUNK_ORIGIN_AND_SCALE.xyz;
+
+	if (isPlant(In.col, float4(In.pos.xyz, 1.0))) {
+		float3 wavPos = abs(In.pos.xyz - 8.0);
+		float wave = sin(TOTAL_REAL_WORLD_TIME * 3.5 + 2.0 * wavPos.x + 2.0 * wavPos.z + wavPos.y);
+
+		Out.camPos.x += wave * 0.03 * smoothstep(0.7, 1.0, In.uv1.y);
+	}
+
 	#ifdef INSTANCEDSTEREO
 		Out.pos = mul(WORLDVIEW_STEREO[In.instID], float4(Out.camPos, 1.0));
 		Out.pos = mul(PROJ_STEREO[In.instID], Out.pos);
