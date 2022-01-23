@@ -223,7 +223,7 @@ float2 renderFluffyClouds(const float3 pos, const float3 sunMoonPos, const float
 		float height = 1.0 + float(i) * stepSize;
 		float2 cloudPos = pos.xz / pos.y * height;
 		cloudPos *= 0.3;
-		clouds.x += fBM(cloudPos, amp, lerp(0.4, 0.0, rain), lerp(0.85, 1.0, rain), time, 6);
+		clouds.x += fBM(cloudPos, amp, lerp(0.4, 0.0, rain), lerp(0.85, 1.0, rain), time, 5);
 		#ifdef ENABLE_CLOUD_SHADE
             if (clouds.x > 0.0) {
                 clouds.y += cloudRayMarching(pos, sunMoonPos, fBM(cloudPos * 0.875, amp, lerp(0.35, 0.0, rain), 1.0, time, 4));
@@ -232,7 +232,8 @@ float2 renderFluffyClouds(const float3 pos, const float3 sunMoonPos, const float
 		amp *= 1.07;
 	} clouds /= float(steps);
 
-	clouds = smoothstep(0.0, lerp(0.65, 1.0, rain), clouds);
+	clouds.x = smoothstep(0.0, lerp(0.25, 0.5, rain), clouds.x);
+    clouds.y = smoothstep(0.0, lerp(0.50, 1.0, rain), clouds.y);
 
 	return clouds;
 }
@@ -302,12 +303,11 @@ float3 toneMap(float3 x) {
 
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
 }
-float3 uncharted2ToneMap(float3 frag, float whiteLevel, float exposureBias) {
-    float3 curr = toneMap(exposureBias * frag);
-    float3 whiteScale = 1.0 / toneMap(float3(whiteLevel, whiteLevel, whiteLevel));
-    float3 color = curr * whiteScale;
+float3 uncharted2ToneMap(const float3 col, const float whiteLevel, const float exposureBias) {
+    float3 r = toneMap(col * exposureBias * 0.7);
+    r /= toneMap(float3(whiteLevel, whiteLevel, whiteLevel));
 
-    return clamp(color, 0.0, 1.0);
+    return clamp(r, 0.0, 1.0);
 }
 
 float3 contrastFilter(float3 color, float contrast) {

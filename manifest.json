@@ -3,7 +3,7 @@
 	"header": {
 		"name": "Musk Rose",
 		"uuid": "03915d65-f025-4795-9111-fe3a9e5012ef",
-		"version": [2, 0, 0],
+		"version": [2, 5, 0],
 		"description": "Shaders dedicated for beauty.\nTwitter: §b@MCH_YamaRin",
 		"min_engine_version": [1, 2, 6]
 	},
@@ -11,7 +11,7 @@
 		{
 			"type": "resources",
 			"uuid": "f051d77a-7fa2-40bf-a7ee-9b243f6154a9",
-			"version": [2, 0, 0]
+			"version": [2, 5, 0]
 		}
 	]
 }

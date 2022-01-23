@@ -232,7 +232,8 @@ vec2 renderFluffyClouds(const hmp vec3 pos, const vec3 sunMoonPos, const float r
 		amp *= 1.07;
 	} clouds /= float(steps);
 
-	clouds = smoothstep(0.0, mix(0.65, 1.0, rain), clouds);
+	clouds.x = smoothstep(0.0, mix(0.25, 0.5, rain), clouds.x);
+    clouds.y = smoothstep(0.0, mix(0.50, 1.0, rain), clouds.y);
 
 	return clouds;
 }
@@ -302,12 +303,11 @@ vec3 toneMap(vec3 x) {
 
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
 }
-vec3 uncharted2ToneMap(vec3 frag, float whiteLevel, float exposureBias) {
-    vec3 curr = toneMap(exposureBias * frag);
-    vec3 whiteScale = 1.0 / toneMap(vec3(whiteLevel, whiteLevel, whiteLevel));
-    vec3 color = curr * whiteScale;
+vec3 uncharted2ToneMap(const vec3 col, const float whiteLevel, const float exposureBias) {
+    vec3 r = toneMap(col * exposureBias * 0.7);
+    r /= toneMap(vec3(whiteLevel, whiteLevel, whiteLevel));
 
-    return clamp(color, 0.0, 1.0);
+    return clamp(r, 0.0, 1.0);
 }
 
 vec3 contrastFilter(vec3 color, float contrast) {

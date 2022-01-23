@@ -169,10 +169,10 @@ if (In.isWater && bool(step(0.7, In.uv1.y))) {
 
 reflectPos = reflect(normalize(In.camPos), worldNormal);
 
-float darkenOverWorld = lerp(max(0.2, In.uv1.y * lerp(0.25, 0.65, daylight)), lerp(0.25, 0.65, daylight), outdoor);
+float darkenOverWorld = lerp(max(0.06, In.uv1.y * lerp(0.08, 0.65, daylight)), lerp(0.08, 0.65, daylight), outdoor);
 float darkenNether = TEXTURE_1.Sample(TextureSampler1, In.uv1).r;
 
-albedo.rgb *= lerp(darkenOverWorld, darkenNether, nether);
+albedo.rgb *= lerp(darkenOverWorld * albedo.rgb, darkenNether, nether);
 albedo.rgb *= shadowCol;
 
 float3 lit = float3(1.0, 1.0, 1.0);
@@ -191,8 +191,7 @@ albedo.rgb *= lit;
 	albedo.rgb *= getAO(In.col, max(0.0, AMBIENT_OCCLUSION_INTENSITY - min(rgb2luma(lit - 1.0), 1.0)));
 #endif
 
-albedo.rgb = uncharted2ToneMap(albedo.rgb, 11.2, 2.2);
-albedo.rgb = contrastFilter(albedo.rgb, 1.25);
+albedo.rgb = pow(uncharted2ToneMap(albedo.rgb, 11.2, 2.2), 0.454545);
 albedo.rgb = desaturate(albedo.rgb, max(0.0, 0.3 - min(rgb2luma(lit - 1.0), 1.0)));
 
 if (bool(underwater)) {
