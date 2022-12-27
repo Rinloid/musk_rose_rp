@@ -9,7 +9,7 @@ struct Input {
 
 struct Output {
     float4 pos : SV_Position;
-	float3 worldPos : worldPos;
+	float3 relPos : relPos;
 #ifdef GEOMETRY_INSTANCEDSTEREO
 	uint instanceID : SV_InstanceID;
 #endif
@@ -20,9 +20,9 @@ struct Output {
 
 ROOT_SIGNATURE
 void main(in Input In, out Output Out) {
-Out.worldPos = In.pos;
-Out.worldPos.y -= 0.128;
-Out.worldPos.yz *= -1.0;
+Out.relPos = In.pos;
+Out.relPos.y -= 0.128;
+Out.relPos.yz *= -1.0;
 #ifdef INSTANCEDSTEREO
 	Out.pos = mul(WORLDVIEWPROJ_STEREO[In.instID], float4(In.pos, 1.0));
 #else

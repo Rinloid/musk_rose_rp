@@ -3,13 +3,13 @@
 #include "vertexVersionCentroidUV.h"
 #include "uniformWorldConstants.h"
 
-varying POS3 worldPos;
+varying POS3 relPos;
 
 attribute POS4 POSITION;
 
 void main() {
-worldPos = POSITION.xyz;
-worldPos.y -= 0.128;
-worldPos.yz *= -1.0;
+relPos = POSITION.xyz;
+relPos.y -= 0.128;
+relPos.yz *= -1.0;
     gl_Position = WORLDVIEWPROJ * POSITION;
 }

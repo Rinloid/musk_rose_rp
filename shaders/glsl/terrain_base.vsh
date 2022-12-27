@@ -1,5 +1,4 @@
 // __multiversion__
-// This signals the loading code to prepend either #version 100 or #version 300 es as apropriate.
 
 #include "vertexVersionCentroid.h"
 #if __VERSION__ >= 300
@@ -16,9 +15,13 @@
 
 #ifndef BYPASS_PIXEL_SHADER
 	varying vec4 inCol;
-	varying POS3 camPos;
-	varying POS3 worldPos;
+	varying POS3 relPos;
+	varying POS3 fragPos;
 	flat varying float waterFlag;
+#endif
+
+#ifdef FOG
+	varying float fogFactor;
 #endif
 
 #include "uniformWorldConstants.h"
@@ -48,7 +51,7 @@ void main() {
     uv1 = TEXCOORD_1;
 	inCol = COLOR;
 #endif
-worldPos = POSITION.xyz;
+fragPos = POSITION.xyz;
 #if !defined(SEASONS) && defined(BLEND)
 	if (0.05 < COLOR.a && COLOR.a < 0.95) {
 		waterFlag = 1.0; 
@@ -60,26 +63,42 @@ worldPos = POSITION.xyz;
 #endif
 #ifdef AS_ENTITY_RENDERER
 	POS4 pos = WORLDVIEWPROJ * POSITION;
-	camPos = pos.xyz;
+	relPos = pos.xyz;
 #else
-    camPos = (POSITION.xyz * CHUNK_ORIGIN_AND_SCALE.w) + CHUNK_ORIGIN_AND_SCALE.xyz;
+    relPos = (POSITION.xyz * CHUNK_ORIGIN_AND_SCALE.w) + CHUNK_ORIGIN_AND_SCALE.xyz;
 
 	if (isPlant(COLOR, POSITION)) {
 		highp vec3 wavPos = abs(POSITION.xyz - 8.0);
 		highp float wave = sin(TOTAL_REAL_WORLD_TIME * 3.5 + 2.0 * wavPos.x + 2.0 * wavPos.z + wavPos.y);
 
-		camPos.x += wave * 0.03 * smoothstep(0.7, 1.0, uv1.y);
+		relPos.x += wave * 0.03 * smoothstep(0.7, 1.0, uv1.y);
 	}
 
-    POS4 pos = WORLDVIEW * vec4(camPos, 1.0);
+    POS4 pos = WORLDVIEW * vec4(relPos, 1.0);
     pos = PROJ * pos;
 #endif
 
     gl_Position = pos;
 
+#if defined(FOG) || defined(BLEND)
+#	ifdef FANCY
+		float cameraDepth = length(relPos);
+#	else
+		float cameraDepth = POSITION.z;
+#	endif
+#endif
+
+#ifdef FOG
+	float len = cameraDepth / RENDER_DISTANCE;
+#	ifdef ALLOW_FADE
+		len += RENDER_CHUNK_FOG_ALPHA;
+#	endif
+	fogFactor = clamp((len - FOG_CONTROL.x) / (FOG_CONTROL.y - FOG_CONTROL.x), 0.0, 1.0);
+#endif
+
 #ifndef BYPASS_PIXEL_SHADER
-	#ifndef FOG
+#	ifndef FOG
 		inCol.rgb += FOG_COLOR.rgb * 0.000001;
-	#endif
+#	endif
 #endif
 }
